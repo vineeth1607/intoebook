@@ -1,23 +1,37 @@
+// User model (models/User.js)
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const UserSchema = new Schema({
-    name :{
+    name: {
         type: String,
-        require: true
+        required: true
     },
-    email:{
-        type : String,
-        required : true ,
-        unique : true
+    email: {
+        type: String,
+        required: true,
+        unique: true
     },
-    password:{
-        type : String,
-        required : true
+    password: {
+        type: String,
+        required: true
     },
-    date :{
-        type : Date,
-        default : Date.now
+    number: {
+        type: String, // Change type to String
+        required: true,
+        unique: true,
+        validate: {
+            validator: function(value) {
+                return /^\d{10}$/.test(value); // Validate 10 numeric digits
+            },
+            message: props => `${props.value} is not a valid number! Must be 10 numeric digits.`
+        }
+    },
+    date: {
+        type: Date,
+        default: Date.now
     }
-  }); 
-  module.exports = mongoose.model("user", UserSchema);
+});
+const User = mongoose.model("User", UserSchema);
+User.createIndexes();
+module.exports = User;
