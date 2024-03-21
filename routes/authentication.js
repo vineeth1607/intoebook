@@ -4,6 +4,8 @@ const User = require('../models/User');
 const bcrypt = require('bcrypt');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+// Global variable
+const secretCode = "sign@Vineeth"
 
 // Validation middleware for user data
 const validateUserData = [
@@ -53,30 +55,52 @@ router.post('/createuser', validateUserData, async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
         // Create a new user with hashed password
-        const newUser = await User.create({
+        const user = await User.create({
             name,
             email,
             password: hashedPassword,
             number,
         });
-        const secretCode = "sign@Vineeth"
-
-        const userData ={
-            user:{
-                id : newUser.id
-            }
-        }
-
-        const authenticationToken =  jwt.sign(userData, secretCode);
+       
+        const payLoad = {user: {id: user.id}}
+        const authenticationToken = jwt.sign(payLoad, secretCode);
 
         // Respond with the newly created user
-        res.status(201).json({message:"User has been created succesfully",authenticationToken});
+        res.status(201).json({ message: "User has been created succesfully", authenticationToken });
     } catch (error) {
         // Handle any errors that occur during user creation
         console.error('Error creating user:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+// Route for user login using POST "api/authentication/login"
+router.post("/login", async (req, res) => {
+    try {
+        const { email, number, password } = req.body;
+        // Check if user with email or number and password matches
+        const authenticateUser = await User.findOne({ $or: [{ email }, { number }] });
+
+        if (!authenticateUser) {
+            return res.status(404).json({ error: 'Invalid credentials' });
+        }
+
+        const matchPassword = await bcrypt.compare(password, authenticateUser.password);
+        if (!matchPassword) {
+            return res.status(404).json({ error: "Invalid credentials" });
+        }
+        
+        // If user and password are correct, create authentication token
+        const payLoad = { user: { id: authenticateUser.id } }
+        const authenticationToken = jwt.sign(payLoad, secretCode);
+        // Respond with user login 
+        res.status(200).json({ message: "Login successful", authenticationToken });
+    } catch (error) {
+        // Handle any errors that occur during user login
+        console.error('Error during login:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+})
 
 module.exports = router;
 
