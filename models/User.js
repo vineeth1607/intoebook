@@ -11,13 +11,8 @@ const UserSchema = new Schema({
         type: String,
         required: true,
         unique: true
-    },
-    password: {
-        type: String,
-        required: true
-    },
-    number: {
-        type: String, // Change type to String
+    },number: {
+        type: String, // Changed type to String
         required: true,
         unique: true,
         validate: {
@@ -27,11 +22,15 @@ const UserSchema = new Schema({
             message: props => `${props.value} is not a valid number! Must be 10 numeric digits.`
         }
     },
+    password: {
+        type: String,
+        required: true
+    },
     date: {
         type: Date,
         default: Date.now
     }
 });
 const User = mongoose.model("User", UserSchema);
-User.createIndexes();
+
 module.exports = User;

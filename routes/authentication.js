@@ -1,49 +1,85 @@
-
 const express = require('express');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
-
+const bcrypt = require('bcrypt');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 
-// Validation middleware
+// Validation middleware for user data
 const validateUserData = [
+    // Validate name field
     body('name').isLength({ min: 5 }).withMessage("Name must be at least 5 characters"),
+
+    // Validate email field
     body('email').isEmail().withMessage("Enter a valid email"),
-    body('password').isLength({ min: 8}).withMessage("Password must be at least 6 characters").matches(/^(?=.*[!@#$%^&*(),.?":{}|<>])(?=.*[A-Z])(?=.*[0-9]).*$/).withMessage("Password must contain at least one special character, one capital letter, and one numeric digit"),
-    body('number').isLength({ min: 10, max: 10 }).withMessage("Number must be exactly 10 digits").isNumeric().withMessage("Number must contain only digits")
+
+    // Validate password field
+    body('password').isLength({ min: 8 }).withMessage("Password must be at least 8 characters")
+        .matches(/^(?=.*[!@#$%^&*(),.?":{}|<>])(?=.*[A-Z])(?=.*[0-9]).*$/)
+        .withMessage("Password must contain at least one special character, one capital letter, and one numeric digit"),
+
+    // Validate number field
+    body('number').isLength({ min: 10, max: 10 }).withMessage("Number must be exactly 10 digits")
+        .isNumeric().withMessage("Number must contain only digits")
 ];
 
-// Route for creating a new user
-router.post('/', validateUserData, async (req, res) => {
+// Route for creating a new user using POST "api/authentication/createuser". No login required 
+router.post('/createuser', validateUserData, async (req, res) => {
     try {
+        // Check if validation errors exist
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const { email, number } = req.body;
+        // Extract name, email, number, and password from request body
+        const { name, email, number, password } = req.body;
 
-        // Check if email or number already exist
+        // Check if user with email or number already exists
         const existingUser = await User.findOne({ $or: [{ email }, { number }] });
 
         if (existingUser) {
             if (existingUser.email === email) {
-                return res.status(400).json({ error: 'Email already registered' });
+                // Return error if user with same email already exists
+                return res.status(400).json({ error: 'Sorry, a user already exists with this email' });
             } else {
-                return res.status(400).json({ error: 'Number already registered' });
+                // Return error if user with same number already exists
+                return res.status(400).json({ error: 'Sorry, a user already exists with this number' });
             }
         }
 
-        // Create a new user
-        const newUser = await User.create(req.body);
-        res.status(201).json(newUser);
+        // Hash the password
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+        // Create a new user with hashed password
+        const newUser = await User.create({
+            name,
+            email,
+            password: hashedPassword,
+            number,
+        });
+        const secretCode = "sign@Vineeth"
+
+        const userData ={
+            user:{
+                id : newUser.id
+            }
+        }
+
+        const authenticationToken =  jwt.sign(userData, secretCode);
+
+        // Respond with the newly created user
+        res.status(201).json({message:"User has been created succesfully",authenticationToken});
     } catch (error) {
+        // Handle any errors that occur during user creation
         console.error('Error creating user:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
 
 module.exports = router;
+
 
 
 
@@ -110,7 +146,7 @@ module.exports = router;
 //         res.status(500).json({ error: 'Internal server error' });
 //     }
 
-//     // created a user using POST "/pai/authentication". it doesn't require authenticatication 
+//     // created a user using POST "/pai/authentication". it doesn't require authenticatication
 //     //  const user = User(req.body);
 //     //  user.save();
 //     //  console.log(req.body)

@@ -3,7 +3,10 @@ connectToMongo();
 const express = require('express')
 
 const app = express()
-const port = 3000
+// const port = 3000   
+// chnaged the port from 3000 to 5000, cause on 3000 react application  will run.
+
+ const port = 5000;
 
 app.use(express.json())
 // Avialable Routes (Routes folder)
