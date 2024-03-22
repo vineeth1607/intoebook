@@ -4,6 +4,8 @@ const User = require('../models/User');
 const bcrypt = require('bcrypt');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const fetchuser = require("../middleware/fetchuser");
+
 // Global variable
 const secretCode = "sign@Vineeth"
 
@@ -25,7 +27,7 @@ const validateUserData = [
         .isNumeric().withMessage("Number must contain only digits")
 ];
 
-// Route for creating a new user using POST "api/authentication/createuser". No login required 
+// 1.Route for creating a new user using POST "api/authentication/createuser". No login required 
 router.post('/createuser', validateUserData, async (req, res) => {
     try {
         // Check if validation errors exist
@@ -39,7 +41,6 @@ router.post('/createuser', validateUserData, async (req, res) => {
 
         // Check if user with email or number already exists
         const existingUser = await User.findOne({ $or: [{ email }, { number }] });
-
         if (existingUser) {
             if (existingUser.email === email) {
                 // Return error if user with same email already exists
@@ -61,8 +62,8 @@ router.post('/createuser', validateUserData, async (req, res) => {
             password: hashedPassword,
             number,
         });
-       
-        const payLoad = {user: {id: user.id}}
+
+        const payLoad = { user: { id: user.id } }
         const authenticationToken = jwt.sign(payLoad, secretCode);
 
         // Respond with the newly created user
@@ -74,22 +75,20 @@ router.post('/createuser', validateUserData, async (req, res) => {
     }
 });
 
-// Route for user login using POST "api/authentication/login"
+// 2.Route for user login using POST "api/authentication/login"
 router.post("/login", async (req, res) => {
     try {
         const { email, number, password } = req.body;
         // Check if user with email or number and password matches
         const authenticateUser = await User.findOne({ $or: [{ email }, { number }] });
-
         if (!authenticateUser) {
             return res.status(404).json({ error: 'Invalid credentials' });
         }
-
         const matchPassword = await bcrypt.compare(password, authenticateUser.password);
         if (!matchPassword) {
             return res.status(404).json({ error: "Invalid credentials" });
         }
-        
+
         // If user and password are correct, create authentication token
         const payLoad = { user: { id: authenticateUser.id } }
         const authenticationToken = jwt.sign(payLoad, secretCode);
@@ -101,7 +100,17 @@ router.post("/login", async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 })
-
+// 3.Route to get logged in user details using JWT and POST method /api/authentication/userdetails. login rquired
+router.post("/userdetails", fetchuser, async (req, res) => {
+    try {
+        const userId = req.user.id
+        const user = await User.findById(userId).select("-password")
+        res.send(user)
+    } catch (error) {
+        console.error(error.message)
+        res.status(500).send("Internal server error");
+    }
+})
 module.exports = router;
 
 
