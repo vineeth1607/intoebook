@@ -6,21 +6,32 @@ const fetchuser = (req, res, next) => {
 
     // Check if token exists
     if (!token) {
-        return res.status(401).send({ error: "Enter a valid token" });
+        return res.status(401).send({ error: "Token is missing" });
     }
 
     try {
         // Verify the token
         const userData = jwt.verify(token, secretCode);
+        
         // Set user data in request object
         req.user = userData.user;
+        
         // Call next middleware
         next();
     } catch (error) {
-        // Handle token verification errors
+        // Log token verification errors
         console.error('Error verifying token:', error);
-        res.status(401).send({ error: "Invalid token" });
+        
+        // If token is invalid or expired
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).send({ error: "Token has expired" });
+        } else if (error.name === 'JsonWebTokenError') {
+            return res.status(401).send({ error: "Invalid token" });
+        } else {
+            return res.status(500).send({ error: "Internal server error" });
+        }
     }
 }
 
 module.exports = fetchuser;
+
